@@ -17,6 +17,7 @@ export default function AdminPage() {
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(false)
   const [editingItem, setEditingItem] = useState<Item | null>(null)
+  const [editingPriceStr, setEditingPriceStr] = useState('')
   const [showNew, setShowNew] = useState(false)
   const [newName, setNewName] = useState('')
   const [newPrice, setNewPrice] = useState('')
@@ -56,10 +57,12 @@ export default function AdminPage() {
   const saveEdit = async () => {
     if (!editingItem) return
     setSaving(true)
+    const price = parseFloat(editingPriceStr.replace(',', '.')) || editingItem.price
     await supabase
       .from('items')
-      .update({ name: editingItem.name, price: editingItem.price, categoria: editingItem.categoria })
+      .update({ name: editingItem.name, price, categoria: editingItem.categoria })
       .eq('id', editingItem.id)
+    setEditingItem((prev) => prev ? { ...prev, price } : null)
     setItems((prev) =>
       prev.map((i) => (i.id === editingItem.id ? editingItem : i))
     )
@@ -198,10 +201,8 @@ export default function AdminPage() {
                   <input
                     type="text"
                     inputMode="decimal"
-                    value={String(editingItem.price)}
-                    onChange={(e) =>
-                      setEditingItem({ ...editingItem, price: parseFloat(e.target.value.replace(',', '.')) || 0 })
-                    }
+                    value={editingPriceStr}
+                    onChange={(e) => setEditingPriceStr(e.target.value)}
                     className="w-full border-2 border-brand rounded-xl px-3 py-2 text-[20px] outline-none"
                   />
                   <select
@@ -231,7 +232,7 @@ export default function AdminPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => setEditingItem(item)}
+                      onClick={() => { setEditingItem(item); setEditingPriceStr(String(item.price).replace('.', ',')) }}
                       className="w-[48px] h-[48px] bg-gray-100 rounded-xl flex items-center justify-center active:scale-95"
                     >
                       <Pencil size={22} />
