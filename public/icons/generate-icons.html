@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Gerar Ícones SJB</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f5f5f5; }
+    canvas { display: block; margin: 10px 0; border: 1px solid #ccc; }
+    button { padding: 10px 20px; background: #C4420A; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; margin: 5px; }
+    h2 { color: #C4420A; }
+  </style>
+</head>
+<body>
+  <h1>Gerador de Ícones — SJB Lanches</h1>
+  <p>Clique nos botões para baixar os ícones e mova-os para a pasta <code>public/icons/</code>.</p>
+
+  <h2>Ícone 192×192</h2>
+  <canvas id="canvas192" width="192" height="192"></canvas>
+  <button onclick="download('canvas192', 'icon-192.png')">Baixar icon-192.png</button>
+
+  <h2>Ícone 512×512</h2>
+  <canvas id="canvas512" width="512" height="512"></canvas>
+  <button onclick="download('canvas512', 'icon-512.png')">Baixar icon-512.png</button>
+
+  <script>
+    function drawIcon(canvasId, size) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      const fontSize = Math.floor(size * 0.35);
+      const smallFont = Math.floor(size * 0.14);
+
+      // Background
+      ctx.fillStyle = '#C4420A';
+      ctx.beginPath();
+      ctx.roundRect(0, 0, size, size, size * 0.18);
+      ctx.fill();
+
+      // Inner circle
+      ctx.fillStyle = '#FFF7F0';
+      ctx.beginPath();
+      ctx.arc(size / 2, size * 0.42, size * 0.28, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Main text: SJB
+      ctx.fillStyle = '#C4420A';
+      ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('SJB', size / 2, size * 0.42);
+
+      // Subtitle
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `bold ${smallFont}px Arial, sans-serif`;
+      ctx.fillText('LANCHES', size / 2, size * 0.78);
+    }
+
+    drawIcon('canvas192', 192);
+    drawIcon('canvas512', 512);
+
+    function download(canvasId, filename) {
+      const canvas = document.getElementById(canvasId);
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+  </script>
+</body>
+</html>
