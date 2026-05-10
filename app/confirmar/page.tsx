@@ -1,10 +1,10 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useOrderStore } from '@/store/orderStore'
 import { supabase } from '@/lib/supabase'
 import { db } from '@/lib/db'
-import { CheckCircle2, ArrowLeft } from 'lucide-react'
+import { CheckCircle2, ArrowLeft, Bike, ShoppingBag } from 'lucide-react'
 
 export default function ConfirmarPage() {
   const router = useRouter()
@@ -12,8 +12,22 @@ export default function ConfirmarPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [entrega, setEntrega] = useState(false)
+  const [taxaEntrega, setTaxaEntrega] = useState(0)
 
   const cartTotal = total()
+  const totalFinal = cartTotal + (entrega ? taxaEntrega : 0)
+
+  useEffect(() => {
+    supabase
+      .from('configuracoes')
+      .select('valor')
+      .eq('chave', 'taxa_entrega')
+      .single()
+      .then(({ data }) => {
+        if (data) setTaxaEntrega(parseFloat(data.valor) || 0)
+      })
+  }, [])
 
   const handleSave = async () => {
     setSaving(true)
@@ -24,7 +38,7 @@ export default function ConfirmarPage() {
       if (isOnline) {
         const { data: order, error: orderErr } = await supabase
           .from('orders')
-          .insert({ total: cartTotal, synced: true })
+          .insert({ total: totalFinal, synced: true, entrega, taxa_entrega: entrega ? taxaEntrega : 0 })
           .select()
           .single()
 
@@ -63,7 +77,7 @@ export default function ConfirmarPage() {
       } else {
         await db.offlineOrders.add({
           localId: crypto.randomUUID(),
-          total: cartTotal,
+          total: totalFinal,
           createdAt: new Date().toISOString(),
           items: cart.map((item) => {
             const adicionaisTotal = item.adicionais.reduce((s, a) => s + a.preco * a.quantidade, 0)
@@ -106,15 +120,13 @@ export default function ConfirmarPage() {
         <h1 className="text-[23px] font-extrabold">Confirmar Pedido</h1>
       </header>
 
+      {/* Itens */}
       <div className="flex-1 p-3 space-y-2">
         {cart.map((item) => {
           const adicionaisTotal = item.adicionais.reduce((s, a) => s + a.preco * a.quantidade, 0)
           const subtotal = (item.unitPrice + adicionaisTotal) * item.quantity
           return (
-            <div
-              key={item.itemId}
-              className="bg-card-bg rounded-xl p-3 border border-brand/20"
-            >
+            <div key={item.itemId} className="bg-card-bg rounded-xl p-3 border border-brand/20">
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <p className="text-[20px] font-bold">{item.itemName}</p>
@@ -142,12 +154,53 @@ export default function ConfirmarPage() {
         })}
       </div>
 
+      {/* Rodapé */}
       <div className="sticky bottom-[65px] bg-white px-4 py-3 border-t-2 border-gray-200 space-y-3">
-        <div className="flex justify-between items-center">
-          <span className="text-[22px] font-bold">Total:</span>
-          <span className="text-[36px] font-extrabold text-brand">
-            R$ {cartTotal.toFixed(2).replace('.', ',')}
-          </span>
+
+        {/* Toggle entrega */}
+        <div className="flex gap-3">
+          <button
+            onClick={() => setEntrega(false)}
+            className={`flex-1 py-3 rounded-xl text-[17px] font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${
+              !entrega
+                ? 'bg-brand text-white shadow-md'
+                : 'bg-gray-100 text-gray-500'
+            }`}
+          >
+            <ShoppingBag size={20} />
+            Retirada
+          </button>
+          <button
+            onClick={() => setEntrega(true)}
+            className={`flex-1 py-3 rounded-xl text-[17px] font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${
+              entrega
+                ? 'bg-brand text-white shadow-md'
+                : 'bg-gray-100 text-gray-500'
+            }`}
+          >
+            <Bike size={20} />
+            Entrega
+          </button>
+        </div>
+
+        {/* Totais */}
+        <div className="space-y-1">
+          <div className="flex justify-between items-center text-[16px] text-gray-600">
+            <span>Subtotal</span>
+            <span>R$ {cartTotal.toFixed(2).replace('.', ',')}</span>
+          </div>
+          {entrega && (
+            <div className="flex justify-between items-center text-[16px] text-gray-600">
+              <span>Taxa de entrega</span>
+              <span>R$ {taxaEntrega.toFixed(2).replace('.', ',')}</span>
+            </div>
+          )}
+          <div className="flex justify-between items-center pt-1 border-t border-gray-200">
+            <span className="text-[22px] font-bold">Total:</span>
+            <span className="text-[36px] font-extrabold text-brand">
+              R$ {totalFinal.toFixed(2).replace('.', ',')}
+            </span>
+          </div>
         </div>
 
         {error && (

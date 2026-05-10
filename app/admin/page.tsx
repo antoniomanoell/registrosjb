@@ -1,15 +1,19 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase, type Item, type Adicional } from '@/lib/supabase'
 import { Loader2, Plus, Pencil, ToggleLeft, ToggleRight, X, Check } from 'lucide-react'
 
-const CATEGORIAS = ['Lanches', 'Balcão', 'Bebidas', 'Outros']
+const CATEGORIAS = ['Lanches', 'Balcão', 'Bebidas', 'Açaí', 'Outros']
 
 export default function AdminPage() {
   const [pin, setPin] = useState('')
   const [authenticated, setAuthenticated] = useState(false)
   const [pinError, setPinError] = useState('')
-  const [aba, setAba] = useState<'itens' | 'adicionais'>('itens')
+  const [aba, setAba] = useState<'itens' | 'adicionais' | 'config'>('itens')
+
+  // --- Config ---
+  const [taxaEntregaStr, setTaxaEntregaStr] = useState('')
+  const [savingConfig, setSavingConfig] = useState(false)
 
   // --- Itens ---
   const [items, setItems] = useState<Item[]>([])
@@ -32,6 +36,26 @@ export default function AdminPage() {
 
   const [saving, setSaving] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!authenticated) return
+    supabase
+      .from('configuracoes')
+      .select('valor')
+      .eq('chave', 'taxa_entrega')
+      .single()
+      .then(({ data }) => { if (data) setTaxaEntregaStr(String(data.valor).replace('.', ',')) })
+  }, [authenticated])
+
+  const saveConfig = async () => {
+    setSavingConfig(true)
+    const valor = parseFloat(taxaEntregaStr.replace(',', '.')) || 0
+    await supabase
+      .from('configuracoes')
+      .upsert({ chave: 'taxa_entrega', valor: valor.toFixed(2) })
+    setSavingConfig(false)
+    showFeedback('Configuração salva!')
+  }
 
   const showFeedback = (msg: string) => {
     setFeedback(msg)
@@ -181,19 +205,24 @@ export default function AdminPage() {
       <div className="flex border-b-2 border-gray-200">
         <button
           onClick={() => setAba('itens')}
-          className={`flex-1 py-3 text-[18px] font-bold transition-colors ${
-            aba === 'itens' ? 'text-brand border-b-[3px] border-brand' : 'text-gray-500'
-          }`}
+          className={`flex-1 py-3 text-[18px] font-bold transition-colors ${aba === 'itens' ? 'text-brand border-b-[3px] border-brand' : 'text-gray-500'
+            }`}
         >
           Itens
         </button>
         <button
           onClick={() => setAba('adicionais')}
-          className={`flex-1 py-3 text-[18px] font-bold transition-colors ${
-            aba === 'adicionais' ? 'text-brand border-b-[3px] border-brand' : 'text-gray-500'
-          }`}
+          className={`flex-1 py-3 text-[18px] font-bold transition-colors ${aba === 'adicionais' ? 'text-brand border-b-[3px] border-brand' : 'text-gray-500'
+            }`}
         >
           Adicionais
+        </button>
+        <button
+          onClick={() => setAba('config')}
+          className={`flex-1 py-3 text-[18px] font-bold transition-colors ${aba === 'config' ? 'text-brand border-b-[3px] border-brand' : 'text-gray-500'
+            }`}
+        >
+          Config
         </button>
       </div>
 
@@ -353,6 +382,33 @@ export default function AdminPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* ===== ABA CONFIG ===== */}
+      {aba === 'config' && (
+        <div className="p-4 space-y-6">
+          <div className="bg-card-bg border-2 border-brand/30 rounded-2xl p-4 space-y-3">
+            <h2 className="text-[20px] font-bold">Taxa de entrega</h2>
+            <p className="text-[15px] text-gray-500">
+              Valor cobrado quando o pedido for marcado como entrega.
+            </p>
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="Ex: 1,00"
+              value={taxaEntregaStr}
+              onChange={(e) => setTaxaEntregaStr(e.target.value)}
+              className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-[22px] focus:border-brand outline-none"
+            />
+            <button
+              onClick={saveConfig}
+              disabled={savingConfig}
+              className="w-full py-4 rounded-xl text-[20px] font-extrabold bg-confirm text-white active:scale-95 disabled:opacity-60"
+            >
+              {savingConfig ? 'Salvando...' : 'SALVAR'}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )
