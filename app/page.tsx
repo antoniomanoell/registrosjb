@@ -41,7 +41,7 @@ export default function HomePage() {
       <div className="fixed inset-0 flex flex-col pb-[65px] bg-white">
         {/* Header */}
         <header className="bg-brand text-white px-4 py-3 flex items-center justify-between flex-shrink-0 shadow-md z-40">
-          <h1 className="text-[23px] font-extrabold tracking-tight">SJB Lanches</h1>
+          <h1 className="text-[23px] font-extrabold tracking-tight">Lanc. São João Batista</h1>
           <SyncIndicator />
         </header>
 
