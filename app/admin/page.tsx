@@ -222,7 +222,7 @@ export default function AdminPage() {
           className={`flex-1 py-3 text-[18px] font-bold transition-colors ${aba === 'config' ? 'text-brand border-b-[3px] border-brand' : 'text-gray-500'
             }`}
         >
-          Config
+          Entrega
         </button>
       </div>
 
