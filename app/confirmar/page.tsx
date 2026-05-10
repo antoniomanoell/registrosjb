@@ -30,29 +30,51 @@ export default function ConfirmarPage() {
 
         if (orderErr || !order) throw orderErr
 
-        const orderItems = cart.map((item) => ({
-          order_id: order.id,
-          item_id: item.itemId,
-          item_name: item.itemName,
-          unit_price: item.unitPrice,
-          quantity: item.quantity,
-          subtotal: item.unitPrice * item.quantity,
-        }))
+        for (const item of cart) {
+          const adicionaisTotal = item.adicionais.reduce((s, a) => s + a.preco * a.quantidade, 0)
+          const subtotal = (item.unitPrice + adicionaisTotal) * item.quantity
 
-        const { error: itemsErr } = await supabase.from('order_items').insert(orderItems)
-        if (itemsErr) throw itemsErr
+          const { data: orderItem, error: itemErr } = await supabase
+            .from('order_items')
+            .insert({
+              order_id: order.id,
+              item_id: item.itemId,
+              item_name: item.itemName,
+              unit_price: item.unitPrice,
+              quantity: item.quantity,
+              subtotal,
+            })
+            .select()
+            .single()
+
+          if (itemErr || !orderItem) throw itemErr
+
+          if (item.adicionais.length > 0) {
+            await supabase.from('order_item_adicionais').insert(
+              item.adicionais.map((a) => ({
+                order_item_id: orderItem.id,
+                adicional_nome: a.nome,
+                preco_unitario: a.preco,
+                quantidade: a.quantidade,
+              }))
+            )
+          }
+        }
       } else {
         await db.offlineOrders.add({
           localId: crypto.randomUUID(),
           total: cartTotal,
           createdAt: new Date().toISOString(),
-          items: cart.map((item) => ({
-            itemId: item.itemId,
-            itemName: item.itemName,
-            unitPrice: item.unitPrice,
-            quantity: item.quantity,
-            subtotal: item.unitPrice * item.quantity,
-          })),
+          items: cart.map((item) => {
+            const adicionaisTotal = item.adicionais.reduce((s, a) => s + a.preco * a.quantidade, 0)
+            return {
+              itemId: item.itemId,
+              itemName: item.itemName,
+              unitPrice: item.unitPrice,
+              quantity: item.quantity,
+              subtotal: (item.unitPrice + adicionaisTotal) * item.quantity,
+            }
+          }),
           synced: false,
         })
       }
@@ -85,22 +107,39 @@ export default function ConfirmarPage() {
       </header>
 
       <div className="flex-1 p-3 space-y-2">
-        {cart.map((item) => (
-          <div
-            key={item.itemId}
-            className="flex justify-between items-center bg-card-bg rounded-xl p-3 border border-brand/20"
-          >
-            <div>
-              <p className="text-[20px] font-bold">{item.itemName}</p>
-              <p className="text-[16px] text-gray-600">
-                {item.quantity} × R$ {item.unitPrice.toFixed(2).replace('.', ',')}
-              </p>
+        {cart.map((item) => {
+          const adicionaisTotal = item.adicionais.reduce((s, a) => s + a.preco * a.quantidade, 0)
+          const subtotal = (item.unitPrice + adicionaisTotal) * item.quantity
+          return (
+            <div
+              key={item.itemId}
+              className="bg-card-bg rounded-xl p-3 border border-brand/20"
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <p className="text-[20px] font-bold">{item.itemName}</p>
+                  <p className="text-[15px] text-gray-600">
+                    {item.quantity} × R$ {item.unitPrice.toFixed(2).replace('.', ',')}
+                    {adicionaisTotal > 0 && ` + R$ ${adicionaisTotal.toFixed(2).replace('.', ',')} adicionais`}
+                  </p>
+                  {item.adicionais.length > 0 && (
+                    <div className="mt-1 space-y-0.5">
+                      {item.adicionais.map((a) => (
+                        <p key={a.adicionalId} className="text-[13px] text-gray-500">
+                          + {a.quantidade > 1 ? `${a.quantidade}× ` : ''}{a.nome}
+                          {a.preco > 0 && ` (R$ ${a.preco.toFixed(2).replace('.', ',')})`}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <span className="text-[20px] font-bold text-brand ml-3">
+                  R$ {subtotal.toFixed(2).replace('.', ',')}
+                </span>
+              </div>
             </div>
-            <span className="text-[20px] font-bold text-brand">
-              R$ {(item.unitPrice * item.quantity).toFixed(2).replace('.', ',')}
-            </span>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className="sticky bottom-[65px] bg-white px-4 py-3 border-t-2 border-gray-200 space-y-3">

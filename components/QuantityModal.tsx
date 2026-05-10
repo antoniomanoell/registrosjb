@@ -2,26 +2,16 @@
 import { useState } from 'react'
 import { Minus, Plus, X } from 'lucide-react'
 import type { Item } from '@/lib/supabase'
-import { useOrderStore } from '@/store/orderStore'
 
 interface Props {
   item: Item
   initialQty: number
+  onConfirm: (qty: number) => void
   onClose: () => void
 }
 
-export function QuantityModal({ item, initialQty, onClose }: Props) {
+export function QuantityModal({ item, initialQty, onConfirm, onClose }: Props) {
   const [qty, setQty] = useState(initialQty > 0 ? initialQty : 1)
-  const { setItemQuantity, removeItem } = useOrderStore()
-
-  const confirm = () => {
-    if (qty === 0) {
-      removeItem(item.id)
-    } else {
-      setItemQuantity({ id: item.id, name: item.name, price: item.price }, qty)
-    }
-    onClose()
-  }
 
   return (
     <div
@@ -30,7 +20,6 @@ export function QuantityModal({ item, initialQty, onClose }: Props) {
     >
       <div className="absolute inset-0 bg-black/50" />
       <div className="relative w-full bg-white rounded-t-3xl px-5 pt-5 pb-[80px] shadow-2xl">
-        {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div>
             <p className="text-[20px] font-extrabold text-[#1A1A1A] leading-tight">{item.name}</p>
@@ -46,19 +35,14 @@ export function QuantityModal({ item, initialQty, onClose }: Props) {
           </button>
         </div>
 
-        {/* Quantity controls */}
         <div className="flex items-center justify-center gap-6 my-5">
           <button
             onClick={() => setQty((q) => Math.max(0, q - 1))}
-            className="w-[60px] h-[60px] rounded-full bg-gray-200 flex items-center justify-center active:scale-95 text-[#1A1A1A]"
+            className="w-[60px] h-[60px] rounded-full bg-gray-200 flex items-center justify-center active:scale-95"
           >
             <Minus size={26} />
           </button>
-
-          <span className="text-[40px] font-extrabold text-[#1A1A1A] w-14 text-center">
-            {qty}
-          </span>
-
+          <span className="text-[40px] font-extrabold text-[#1A1A1A] w-14 text-center">{qty}</span>
           <button
             onClick={() => setQty((q) => q + 1)}
             className="w-[60px] h-[60px] rounded-full bg-brand flex items-center justify-center active:scale-95 text-white"
@@ -73,9 +57,8 @@ export function QuantityModal({ item, initialQty, onClose }: Props) {
           </p>
         )}
 
-        {/* Confirm button */}
         <button
-          onClick={confirm}
+          onClick={() => onConfirm(qty)}
           className={`w-full py-4 rounded-2xl text-[20px] font-extrabold active:scale-95 ${
             qty === 0
               ? 'bg-gray-300 text-gray-600'
@@ -84,8 +67,7 @@ export function QuantityModal({ item, initialQty, onClose }: Props) {
         >
           {qty === 0
             ? initialQty > 0 ? 'REMOVER DO PEDIDO' : 'CANCELAR'
-            : initialQty > 0 ? 'ATUALIZAR' : 'ADICIONAR AO PEDIDO'
-          }
+            : initialQty > 0 ? 'ATUALIZAR' : 'ADICIONAR AO PEDIDO'}
         </button>
       </div>
     </div>

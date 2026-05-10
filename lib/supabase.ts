@@ -15,11 +15,27 @@ export type Item = {
   updated_at: string
 }
 
+export type Adicional = {
+  id: string
+  nome: string
+  preco: number
+  ativo: boolean
+  created_at: string
+}
+
 export type Order = {
   id: string
   total: number
   created_at: string
   synced: boolean
+}
+
+export type OrderItemAdicional = {
+  id: string
+  order_item_id: string
+  adicional_nome: string
+  preco_unitario: number
+  quantidade: number
 }
 
 export type OrderItem = {
@@ -30,6 +46,7 @@ export type OrderItem = {
   unit_price: number
   quantity: number
   subtotal: number
+  order_item_adicionais?: OrderItemAdicional[]
 }
 
 export type OrderWithItems = Order & {

@@ -1,29 +1,42 @@
 'use client'
 import { useState } from 'react'
-import { supabase, type Item } from '@/lib/supabase'
+import { supabase, type Item, type Adicional } from '@/lib/supabase'
 import { Loader2, Plus, Pencil, ToggleLeft, ToggleRight, X, Check } from 'lucide-react'
 
-const CATEGORIAS = [
-  'Lanches',
-  'Balcão',
-  'Bebidas',
-  'Outros',
-]
+const CATEGORIAS = ['Lanches', 'Balcão', 'Bebidas', 'Outros']
 
 export default function AdminPage() {
   const [pin, setPin] = useState('')
   const [authenticated, setAuthenticated] = useState(false)
   const [pinError, setPinError] = useState('')
+  const [aba, setAba] = useState<'itens' | 'adicionais'>('itens')
+
+  // --- Itens ---
   const [items, setItems] = useState<Item[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loadingItems, setLoadingItems] = useState(false)
   const [editingItem, setEditingItem] = useState<Item | null>(null)
   const [editingPriceStr, setEditingPriceStr] = useState('')
-  const [showNew, setShowNew] = useState(false)
+  const [showNewItem, setShowNewItem] = useState(false)
   const [newName, setNewName] = useState('')
   const [newPrice, setNewPrice] = useState('')
   const [newCategoria, setNewCategoria] = useState(CATEGORIAS[0])
+
+  // --- Adicionais ---
+  const [adicionais, setAdicionais] = useState<Adicional[]>([])
+  const [loadingAdicionais, setLoadingAdicionais] = useState(false)
+  const [editingAdicional, setEditingAdicional] = useState<Adicional | null>(null)
+  const [editingAdicionalPriceStr, setEditingAdicionalPriceStr] = useState('')
+  const [showNewAdicional, setShowNewAdicional] = useState(false)
+  const [newAdicionalNome, setNewAdicionalNome] = useState('')
+  const [newAdicionalPreco, setNewAdicionalPreco] = useState('')
+
   const [saving, setSaving] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
+
+  const showFeedback = (msg: string) => {
+    setFeedback(msg)
+    setTimeout(() => setFeedback(null), 2000)
+  }
 
   const checkPin = async () => {
     const res = await fetch('/api/check-pin', {
@@ -34,27 +47,27 @@ export default function AdminPage() {
     if (res.ok) {
       setAuthenticated(true)
       loadItems()
+      loadAdicionais()
     } else {
       setPinError('PIN incorreto. Tente novamente.')
       setPin('')
     }
   }
 
+  // ========== ITENS ==========
   const loadItems = async () => {
-    setLoading(true)
+    setLoadingItems(true)
     const { data } = await supabase.from('items').select('*').order('categoria').order('name')
     setItems(data || [])
-    setLoading(false)
+    setLoadingItems(false)
   }
 
-  const toggleActive = async (item: Item) => {
+  const toggleItemActive = async (item: Item) => {
     await supabase.from('items').update({ active: !item.active }).eq('id', item.id)
-    setItems((prev) =>
-      prev.map((i) => (i.id === item.id ? { ...i, active: !i.active } : i))
-    )
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, active: !i.active } : i)))
   }
 
-  const saveEdit = async () => {
+  const saveItem = async () => {
     if (!editingItem) return
     setSaving(true)
     const price = parseFloat(editingPriceStr.replace(',', '.')) || editingItem.price
@@ -63,13 +76,10 @@ export default function AdminPage() {
       .from('items')
       .update({ name: updatedItem.name, price: updatedItem.price, categoria: updatedItem.categoria })
       .eq('id', updatedItem.id)
-    setItems((prev) =>
-      prev.map((i) => (i.id === updatedItem.id ? updatedItem : i))
-    )
+    setItems((prev) => prev.map((i) => (i.id === updatedItem.id ? updatedItem : i)))
     setEditingItem(null)
     setSaving(false)
-    setFeedback('Item atualizado!')
-    setTimeout(() => setFeedback(null), 2000)
+    showFeedback('Item atualizado!')
   }
 
   const createItem = async () => {
@@ -82,21 +92,62 @@ export default function AdminPage() {
       .select()
       .single()
     if (data) setItems((prev) => [...prev, data].sort((a, b) => a.categoria.localeCompare(b.categoria) || a.name.localeCompare(b.name)))
-    setNewName('')
-    setNewPrice('')
-    setNewCategoria(CATEGORIAS[0])
-    setShowNew(false)
+    setNewName(''); setNewPrice(''); setNewCategoria(CATEGORIAS[0]); setShowNewItem(false)
     setSaving(false)
-    setFeedback('Item criado!')
-    setTimeout(() => setFeedback(null), 2000)
+    showFeedback('Item criado!')
   }
 
-  const selectClass = 'w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-[20px] focus:border-brand outline-none bg-white'
+  // ========== ADICIONAIS ==========
+  const loadAdicionais = async () => {
+    setLoadingAdicionais(true)
+    const { data } = await supabase.from('adicionais').select('*').order('nome')
+    setAdicionais((data as Adicional[]) || [])
+    setLoadingAdicionais(false)
+  }
 
+  const toggleAdicionalAtivo = async (a: Adicional) => {
+    await supabase.from('adicionais').update({ ativo: !a.ativo }).eq('id', a.id)
+    setAdicionais((prev) => prev.map((x) => (x.id === a.id ? { ...x, ativo: !x.ativo } : x)))
+  }
+
+  const saveAdicional = async () => {
+    if (!editingAdicional) return
+    setSaving(true)
+    const preco = parseFloat(editingAdicionalPriceStr.replace(',', '.')) || 0
+    const updated = { ...editingAdicional, preco }
+    await supabase
+      .from('adicionais')
+      .update({ nome: updated.nome, preco: updated.preco })
+      .eq('id', updated.id)
+    setAdicionais((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+    setEditingAdicional(null)
+    setSaving(false)
+    showFeedback('Adicional atualizado!')
+  }
+
+  const createAdicional = async () => {
+    if (!newAdicionalNome.trim()) return
+    setSaving(true)
+    const preco = parseFloat(newAdicionalPreco.replace(',', '.')) || 0
+    const { data } = await supabase
+      .from('adicionais')
+      .insert({ nome: newAdicionalNome.trim(), preco })
+      .select()
+      .single()
+    if (data) setAdicionais((prev) => [...prev, data as Adicional].sort((a, b) => a.nome.localeCompare(b.nome)))
+    setNewAdicionalNome(''); setNewAdicionalPreco(''); setShowNewAdicional(false)
+    setSaving(false)
+    showFeedback('Adicional criado!')
+  }
+
+  const inputClass = 'w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-[20px] focus:border-brand outline-none bg-white'
+  const inputBrandClass = 'w-full border-2 border-brand rounded-xl px-3 py-2 text-[20px] outline-none bg-white'
+
+  // ========== PIN SCREEN ==========
   if (!authenticated) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-8 gap-8">
-        <h1 className="text-[28px] font-extrabold text-[#1A1A1A]">Área Administrativa</h1>
+      <div className="flex flex-col items-center justify-center min-h-screen px-8 gap-8 pb-[65px]">
+        <h1 className="text-[28px] font-extrabold">Área Administrativa</h1>
         <p className="text-[20px] text-gray-600 text-center">Digite o PIN de 4 dígitos para acessar.</p>
         <input
           type="password"
@@ -119,17 +170,32 @@ export default function AdminPage() {
     )
   }
 
+  // ========== MAIN ADMIN ==========
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="bg-brand text-white px-4 py-4 flex justify-between items-center">
-        <h1 className="text-[26px] font-extrabold">Gerenciar Itens</h1>
-        <button
-          onClick={() => setShowNew(true)}
-          className="bg-white text-brand rounded-xl px-4 py-2 font-bold text-[18px] flex items-center gap-2 active:scale-95"
-        >
-          <Plus size={22} /> Novo
-        </button>
+    <div className="flex flex-col min-h-screen pb-[65px]">
+      <header className="bg-brand text-white px-4 py-4">
+        <h1 className="text-[23px] font-extrabold">Gerenciar</h1>
       </header>
+
+      {/* Aba switcher */}
+      <div className="flex border-b-2 border-gray-200">
+        <button
+          onClick={() => setAba('itens')}
+          className={`flex-1 py-3 text-[18px] font-bold transition-colors ${
+            aba === 'itens' ? 'text-brand border-b-[3px] border-brand' : 'text-gray-500'
+          }`}
+        >
+          Itens
+        </button>
+        <button
+          onClick={() => setAba('adicionais')}
+          className={`flex-1 py-3 text-[18px] font-bold transition-colors ${
+            aba === 'adicionais' ? 'text-brand border-b-[3px] border-brand' : 'text-gray-500'
+          }`}
+        >
+          Adicionais
+        </button>
+      </div>
 
       {feedback && (
         <div className="mx-4 mt-4 p-3 bg-green-50 border border-green-400 rounded-xl text-[18px] text-green-700 font-semibold text-center">
@@ -137,118 +203,156 @@ export default function AdminPage() {
         </div>
       )}
 
-      {showNew && (
-        <div className="m-4 p-4 bg-card-bg border-2 border-brand rounded-2xl space-y-3">
-          <h2 className="text-[20px] font-bold">Novo Item</h2>
-          <input
-            type="text"
-            placeholder="Nome do item"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className={selectClass}
-          />
-          <input
-            type="text"
-            inputMode="decimal"
-            placeholder="Preço (ex: 8,50)"
-            value={newPrice}
-            onChange={(e) => setNewPrice(e.target.value)}
-            className={selectClass}
-          />
-          <select
-            value={newCategoria}
-            onChange={(e) => setNewCategoria(e.target.value)}
-            className={selectClass}
-          >
-            {CATEGORIAS.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-          <div className="flex gap-3">
+      {/* ===== ABA ITENS ===== */}
+      {aba === 'itens' && (
+        <>
+          <div className="flex justify-end px-4 pt-3">
             <button
-              onClick={createItem}
-              disabled={saving || !newName.trim() || !newPrice}
-              className="flex-1 py-3 bg-confirm text-white rounded-xl text-[20px] font-bold active:scale-95 disabled:opacity-50"
+              onClick={() => setShowNewItem(true)}
+              className="bg-brand text-white rounded-xl px-4 py-2 font-bold text-[17px] flex items-center gap-2 active:scale-95"
             >
-              {saving ? 'Salvando...' : 'Criar'}
-            </button>
-            <button
-              onClick={() => { setShowNew(false); setNewName(''); setNewPrice(''); setNewCategoria(CATEGORIAS[0]) }}
-              className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl text-[20px] font-bold active:scale-95"
-            >
-              Cancelar
+              <Plus size={20} /> Novo item
             </button>
           </div>
-        </div>
+
+          {showNewItem && (
+            <div className="m-4 p-4 bg-card-bg border-2 border-brand rounded-2xl space-y-3">
+              <h2 className="text-[20px] font-bold">Novo Item</h2>
+              <input type="text" placeholder="Nome do item" value={newName} onChange={(e) => setNewName(e.target.value)} className={inputClass} />
+              <input type="text" inputMode="decimal" placeholder="Preço (ex: 8,50)" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} className={inputClass} />
+              <select value={newCategoria} onChange={(e) => setNewCategoria(e.target.value)} className={inputClass}>
+                {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <div className="flex gap-3">
+                <button onClick={createItem} disabled={saving || !newName.trim() || !newPrice} className="flex-1 py-3 bg-confirm text-white rounded-xl text-[20px] font-bold active:scale-95 disabled:opacity-50">
+                  {saving ? 'Salvando...' : 'Criar'}
+                </button>
+                <button onClick={() => { setShowNewItem(false); setNewName(''); setNewPrice('') }} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl text-[20px] font-bold active:scale-95">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {loadingItems ? (
+            <div className="flex justify-center py-12"><Loader2 size={44} className="animate-spin text-brand" /></div>
+          ) : (
+            <div className="px-4 py-3 space-y-3">
+              {items.map((item) => (
+                <div key={item.id} className={`rounded-2xl p-4 border-2 ${item.active ? 'bg-card-bg border-brand/30' : 'bg-gray-100 border-gray-300 opacity-60'}`}>
+                  {editingItem?.id === item.id ? (
+                    <div className="space-y-2">
+                      <input type="text" value={editingItem.name} onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })} className={inputBrandClass} />
+                      <input type="text" inputMode="decimal" value={editingPriceStr} onChange={(e) => setEditingPriceStr(e.target.value)} className={inputBrandClass} />
+                      <select value={editingItem.categoria} onChange={(e) => setEditingItem({ ...editingItem, categoria: e.target.value })} className={inputBrandClass.replace('border-brand', 'border-brand') + ' bg-white'}>
+                        {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                      <div className="flex gap-2">
+                        <button onClick={saveItem} disabled={saving} className="flex-1 py-3 bg-confirm text-white rounded-xl text-[18px] font-bold active:scale-95">
+                          <Check size={18} className="inline mr-1" />Salvar
+                        </button>
+                        <button onClick={() => setEditingItem(null)} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl text-[18px] font-bold active:scale-95">
+                          <X size={18} className="inline mr-1" />Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1">
+                        <p className="text-[20px] font-bold">{item.name}</p>
+                        <p className="text-[14px] text-gray-500">{item.categoria}</p>
+                        <p className="text-[17px] text-brand font-semibold">R$ {item.price.toFixed(2).replace('.', ',')}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => { setEditingItem(item); setEditingPriceStr(String(item.price).replace('.', ',')) }} className="w-[46px] h-[46px] bg-gray-100 rounded-xl flex items-center justify-center active:scale-95">
+                          <Pencil size={20} />
+                        </button>
+                        <button onClick={() => toggleItemActive(item)} className={`w-[46px] h-[46px] rounded-xl flex items-center justify-center active:scale-95 ${item.active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                          {item.active ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 size={48} className="animate-spin text-brand" />
-        </div>
-      ) : (
-        <div className="px-4 py-3 space-y-3">
-          {items.map((item) => (
-            <div key={item.id} className={`rounded-2xl p-4 border-2 ${item.active ? 'bg-card-bg border-brand/30' : 'bg-gray-100 border-gray-300 opacity-60'}`}>
-              {editingItem?.id === item.id ? (
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={editingItem.name}
-                    onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
-                    className="w-full border-2 border-brand rounded-xl px-3 py-2 text-[20px] outline-none"
-                  />
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={editingPriceStr}
-                    onChange={(e) => setEditingPriceStr(e.target.value)}
-                    className="w-full border-2 border-brand rounded-xl px-3 py-2 text-[20px] outline-none"
-                  />
-                  <select
-                    value={editingItem.categoria}
-                    onChange={(e) => setEditingItem({ ...editingItem, categoria: e.target.value })}
-                    className="w-full border-2 border-brand rounded-xl px-3 py-2 text-[20px] outline-none bg-white"
-                  >
-                    {CATEGORIAS.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                  <div className="flex gap-2">
-                    <button onClick={saveEdit} disabled={saving} className="flex-1 py-3 bg-confirm text-white rounded-xl text-[18px] font-bold active:scale-95">
-                      <Check size={20} className="inline mr-1" />Salvar
-                    </button>
-                    <button onClick={() => setEditingItem(null)} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl text-[18px] font-bold active:scale-95">
-                      <X size={20} className="inline mr-1" />Cancelar
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex-1">
-                    <p className="text-[20px] font-bold">{item.name}</p>
-                    <p className="text-[16px] text-gray-500">{item.categoria}</p>
-                    <p className="text-[18px] text-brand font-semibold">R$ {item.price.toFixed(2).replace('.', ',')}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => { setEditingItem(item); setEditingPriceStr(String(item.price).replace('.', ',')) }}
-                      className="w-[48px] h-[48px] bg-gray-100 rounded-xl flex items-center justify-center active:scale-95"
-                    >
-                      <Pencil size={22} />
-                    </button>
-                    <button
-                      onClick={() => toggleActive(item)}
-                      className={`w-[48px] h-[48px] rounded-xl flex items-center justify-center active:scale-95 ${item.active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}
-                    >
-                      {item.active ? <ToggleRight size={26} /> : <ToggleLeft size={26} />}
-                    </button>
-                  </div>
-                </div>
-              )}
+      {/* ===== ABA ADICIONAIS ===== */}
+      {aba === 'adicionais' && (
+        <>
+          <div className="flex justify-end px-4 pt-3">
+            <button
+              onClick={() => setShowNewAdicional(true)}
+              className="bg-brand text-white rounded-xl px-4 py-2 font-bold text-[17px] flex items-center gap-2 active:scale-95"
+            >
+              <Plus size={20} /> Novo adicional
+            </button>
+          </div>
+
+          {showNewAdicional && (
+            <div className="m-4 p-4 bg-card-bg border-2 border-brand rounded-2xl space-y-3">
+              <h2 className="text-[20px] font-bold">Novo Adicional</h2>
+              <input type="text" placeholder="Nome (ex: Ovo, Bacon)" value={newAdicionalNome} onChange={(e) => setNewAdicionalNome(e.target.value)} className={inputClass} />
+              <input type="text" inputMode="decimal" placeholder="Preço (0 = grátis)" value={newAdicionalPreco} onChange={(e) => setNewAdicionalPreco(e.target.value)} className={inputClass} />
+              <div className="flex gap-3">
+                <button onClick={createAdicional} disabled={saving || !newAdicionalNome.trim()} className="flex-1 py-3 bg-confirm text-white rounded-xl text-[20px] font-bold active:scale-95 disabled:opacity-50">
+                  {saving ? 'Salvando...' : 'Criar'}
+                </button>
+                <button onClick={() => { setShowNewAdicional(false); setNewAdicionalNome(''); setNewAdicionalPreco('') }} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl text-[20px] font-bold active:scale-95">
+                  Cancelar
+                </button>
+              </div>
             </div>
-          ))}
-        </div>
+          )}
+
+          {loadingAdicionais ? (
+            <div className="flex justify-center py-12"><Loader2 size={44} className="animate-spin text-brand" /></div>
+          ) : (
+            <div className="px-4 py-3 space-y-3">
+              {adicionais.length === 0 && (
+                <p className="text-center text-[18px] text-gray-500 py-8">Nenhum adicional cadastrado.</p>
+              )}
+              {adicionais.map((a) => (
+                <div key={a.id} className={`rounded-2xl p-4 border-2 ${a.ativo ? 'bg-card-bg border-brand/30' : 'bg-gray-100 border-gray-300 opacity-60'}`}>
+                  {editingAdicional?.id === a.id ? (
+                    <div className="space-y-2">
+                      <input type="text" value={editingAdicional.nome} onChange={(e) => setEditingAdicional({ ...editingAdicional, nome: e.target.value })} className={inputBrandClass} />
+                      <input type="text" inputMode="decimal" placeholder="Preço (0 = grátis)" value={editingAdicionalPriceStr} onChange={(e) => setEditingAdicionalPriceStr(e.target.value)} className={inputBrandClass} />
+                      <div className="flex gap-2">
+                        <button onClick={saveAdicional} disabled={saving} className="flex-1 py-3 bg-confirm text-white rounded-xl text-[18px] font-bold active:scale-95">
+                          <Check size={18} className="inline mr-1" />Salvar
+                        </button>
+                        <button onClick={() => setEditingAdicional(null)} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl text-[18px] font-bold active:scale-95">
+                          <X size={18} className="inline mr-1" />Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1">
+                        <p className="text-[20px] font-bold">{a.nome}</p>
+                        <p className="text-[17px] text-brand font-semibold">
+                          {a.preco === 0 ? 'Grátis' : `R$ ${a.preco.toFixed(2).replace('.', ',')}`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => { setEditingAdicional(a); setEditingAdicionalPriceStr(String(a.preco).replace('.', ',')) }} className="w-[46px] h-[46px] bg-gray-100 rounded-xl flex items-center justify-center active:scale-95">
+                          <Pencil size={20} />
+                        </button>
+                        <button onClick={() => toggleAdicionalAtivo(a)} className={`w-[46px] h-[46px] rounded-xl flex items-center justify-center active:scale-95 ${a.ativo ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                          {a.ativo ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   )
