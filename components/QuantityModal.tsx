@@ -29,7 +29,7 @@ export function QuantityModal({ item, initialQty, onClose }: Props) {
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div className="absolute inset-0 bg-black/50" />
-      <div className="relative w-full bg-white rounded-t-3xl px-5 py-5 shadow-2xl">
+      <div className="relative w-full bg-white rounded-t-3xl px-5 pt-5 pb-[80px] shadow-2xl">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div>

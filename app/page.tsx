@@ -17,12 +17,23 @@ export default function HomePage() {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const hasItems = cart.length > 0
 
+  const ORDEM_CATEGORIAS = ['Lanches', 'Balcão', 'Bebidas', 'Outros']
+
   const categorias = items.reduce<Record<string, typeof items>>((acc, item) => {
     const cat = item.categoria || 'Outros'
     if (!acc[cat]) acc[cat] = []
     acc[cat].push(item)
     return acc
   }, {})
+
+  const categoriasOrdenadas = Object.entries(categorias).sort(([a], [b]) => {
+    const ia = ORDEM_CATEGORIAS.indexOf(a)
+    const ib = ORDEM_CATEGORIAS.indexOf(b)
+    if (ia === -1 && ib === -1) return a.localeCompare(b)
+    if (ia === -1) return 1
+    if (ib === -1) return -1
+    return ia - ib
+  })
 
   return (
     <>
@@ -51,7 +62,7 @@ export default function HomePage() {
 
           {!loading && !error && (
             <div className="space-y-5">
-              {Object.entries(categorias).map(([categoria, itensDaCategoria]) => (
+              {categoriasOrdenadas.map(([categoria, itensDaCategoria]) => (
                 <section key={categoria}>
                   <h2 className="text-[18px] font-extrabold text-[#1A1A1A] mb-2 border-l-4 border-brand pl-3">
                     {categoria}
