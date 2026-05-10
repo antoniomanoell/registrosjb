@@ -5,8 +5,7 @@ import { Loader2, Plus, Pencil, ToggleLeft, ToggleRight, X, Check } from 'lucide
 
 const CATEGORIAS = [
   'Lanches',
-  'Salgados',
-  'Doces',
+  'Balcão',
   'Bebidas',
   'Outros',
 ]
