@@ -58,13 +58,13 @@ export default function AdminPage() {
     if (!editingItem) return
     setSaving(true)
     const price = parseFloat(editingPriceStr.replace(',', '.')) || editingItem.price
+    const updatedItem = { ...editingItem, price }
     await supabase
       .from('items')
-      .update({ name: editingItem.name, price, categoria: editingItem.categoria })
-      .eq('id', editingItem.id)
-    setEditingItem((prev) => prev ? { ...prev, price } : null)
+      .update({ name: updatedItem.name, price: updatedItem.price, categoria: updatedItem.categoria })
+      .eq('id', updatedItem.id)
     setItems((prev) =>
-      prev.map((i) => (i.id === editingItem.id ? editingItem : i))
+      prev.map((i) => (i.id === updatedItem.id ? updatedItem : i))
     )
     setEditingItem(null)
     setSaving(false)
