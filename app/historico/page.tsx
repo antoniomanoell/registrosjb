@@ -19,13 +19,16 @@ export default function HistoricoPage() {
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const start = `${date}T00:00:00`
-      const end = `${date}T23:59:59`
+      // Fuso de Brasília (UTC-3): o dia começa às 03:00Z e termina às 02:59:59Z do dia seguinte
+      const start = `${date}T03:00:00Z`
+      const nextDay = new Date(`${date}T03:00:00Z`)
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1)
+      const end = nextDay.toISOString()
       const { data } = await supabase
         .from('orders')
         .select('*, order_items(*)')
         .gte('created_at', start)
-        .lte('created_at', end)
+        .lt('created_at', end)
         .order('created_at', { ascending: false })
       setOrders((data as OrderWithItems[]) || [])
       setLoading(false)
@@ -42,8 +45,8 @@ export default function HistoricoPage() {
       const { data, error } = await supabase
         .from('orders')
         .select('*, order_items(*)')
-        .gte('created_at', `${exportStart}T00:00:00`)
-        .lte('created_at', `${exportEnd}T23:59:59`)
+        .gte('created_at', `${exportStart}T03:00:00Z`)
+        .lt('created_at', (() => { const d = new Date(`${exportEnd}T03:00:00Z`); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString() })())
         .order('created_at')
 
       if (error) throw error
